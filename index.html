@@ -22,8 +22,12 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 .player-card{width:100%;background:#0b0d10;padding:12px 0 20px}
 .player-header{display:flex;align-items:center;justify-content:space-between;padding:0 16px 12px;border-bottom:1px solid #1e293b;color:#94a3b8}
 .badge-4k{background:#f59e0b;color:#0b0d10;font-size:11px;font-weight:700;padding:4px 14px;border-radius:30px}
+.server-bar{display:none;padding:8px 16px;background:#0d1117;border-bottom:1px solid #1e293b;align-items:center;gap:8px;flex-wrap:wrap}
+.server-bar span{font-size:11px;color:#94a3b8;font-weight:600}
+.server-list{display:flex;gap:6px;flex-wrap:wrap}
 .video-container{position:relative;width:100%;padding-bottom:177.78%;height:0;background:#0a0e14;overflow:hidden}
 .video-container video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0a0e14}
+.video-container iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
 .video-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);cursor:pointer;z-index:10}
 .video-overlay.hidden{opacity:0;pointer-events:none}
 .video-overlay i{font-size:72px;color:rgba(255,255,255,.88)}
@@ -65,11 +69,16 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 <div id="page-player">
   <div class="player-card">
     <div class="player-header"><span id="currentVideoTitle">Video 1</span><span class="badge-4k">4K ULTRA HD</span><span id="videoCounter">1 / 1</span></div>
+    <div class="server-bar" id="serverBar">
+      <span><i class="fas fa-server"></i> Server:</span>
+      <div class="server-list" id="serverList"></div>
+    </div>
     <div class="video-container">
       <video id="mainVideo" playsinline preload="metadata"></video>
+      <iframe id="mainEmbed" style="display:none;" allowfullscreen allow="autoplay"></iframe>
       <div class="video-overlay" id="videoOverlay"><i class="fas fa-play-circle"></i></div>
     </div>
-    <div class="video-controls">
+    <div class="video-controls" id="videoControls">
       <button id="playPauseBtn"><i class="fas fa-play"></i></button>
       <div class="progress-container"><div class="progress-bar" id="progressBar"><div class="fill" id="progressFill"></div></div><span class="time-display" id="timeDisplay">00:00 / 00:00</span></div>
       <div class="volume-control"><button id="muteBtn"><i class="fas fa-volume-up"></i></button><input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.8"></div>
@@ -88,10 +97,15 @@ const DEFAULT_TITLE = "Raisa Dari Plat A";
 const DIRECT_URL = "https://thoroughgear.com/OufDjL";
 
 let idx = 0;
+let currentSources = [];
+let currentSourceIdx = 0;
+
 const landing = document.getElementById('page-landing');
 const player = document.getElementById('page-player');
 const video = document.getElementById('mainVideo');
+const embedEl = document.getElementById('mainEmbed');
 const overlay = document.getElementById('videoOverlay');
+const controlsEl = document.getElementById('videoControls');
 const playBtn = document.getElementById('playPauseBtn');
 const progressBar = document.getElementById('progressBar');
 const fill = document.getElementById('progressFill');
@@ -99,6 +113,8 @@ const time = document.getElementById('timeDisplay');
 const vol = document.getElementById('volumeSlider');
 const mute = document.getElementById('muteBtn');
 const counter = document.getElementById('videoCounter');
+const serverBar = document.getElementById('serverBar');
+const serverList = document.getElementById('serverList');
 
 const requestedVideo = Number.parseInt(new URLSearchParams(location.search).get('video') || '', 10);
 if (Number.isInteger(requestedVideo)) {
@@ -117,12 +133,107 @@ function updatePageTitle(newTitle) {
 }
 
 function fmt(s) {
+  if (!isFinite(s)) return '00:00';
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
 }
 
+function getProviderName(url) {
+  if (!url) return '';
+  const lower = url.toLowerCase();
+  if (lower.includes('videy.co')) return 'Videy';
+  if (lower.includes('aceimg.com')) return 'Aceimg';
+  if (lower.includes('slicedrive.com')) return 'Slicedrive';
+  if (lower.includes('viorawatch.com') || lower.includes('viora')) return 'Viora';
+  if (lower.includes('vidmolo.com') || lower.includes('molovideo.com')) return 'Vidmolo';
+  if (lower.includes('catbox.moe')) return 'Catbox';
+  if (lower.includes('streamtape.com')) return 'Streamtape';
+  if (lower.includes('filemoon')) return 'Filemoon';
+  return '';
+}
+
+function getAllSources(v) {
+  if (!v) return [];
+  const list = [];
+  if (v.src) list.push(v.src);
+  if (Array.isArray(v.alts)) {
+    v.alts.forEach(a => {
+      const trimmed = String(a || '').trim();
+      if (trimmed && !list.includes(trimmed)) list.push(trimmed);
+    });
+  }
+  return list;
+}
+
+function isEmbedStream(url) {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  if (lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.includes('.mp4?') || lower.includes('files.catbox.moe') || lower.includes('litter.catbox.moe') || lower.includes('cdn.videy.co') || lower.includes('cdn.aceimg.com') || lower.includes('cdn.viorawatch.com') || lower.includes('cdn.slicedrive.com')) {
+    return false;
+  }
+  return lower.includes('vidmolo.com') || lower.includes('molovideo.com') || lower.includes('/v?id=') || lower.includes('/e/') || lower.includes('/embed/') || lower.includes('streamtape.com') || lower.includes('dood');
+}
+
+function renderServerButtons() {
+  if (!serverBar || !serverList) return;
+  if (!currentSources || currentSources.length <= 1) {
+    serverBar.style.display = 'none';
+    serverList.innerHTML = '';
+    return;
+  }
+  serverBar.style.display = 'flex';
+  serverList.innerHTML = '';
+  currentSources.forEach((srcUrl, sIdx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    const isActive = sIdx === currentSourceIdx;
+    btn.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;transition:all 0.2s;' +
+      (isActive ? 'background:#2563eb;color:#fff;border:1px solid #3b82f6;font-weight:700;' : 'background:#1e293b;color:#cbd5e1;border:1px solid #334155;');
+    const pName = getProviderName(srcUrl);
+    const label = sIdx === 0 
+      ? (pName ? `Server 1 (${pName} - Utama)` : 'Server 1 (Utama)')
+      : (pName ? `Server ${sIdx + 1} (${pName})` : `Server ${sIdx + 1} (Cadangan)`);
+    btn.textContent = label;
+    btn.onclick = () => {
+      if (currentSourceIdx === sIdx) return;
+      currentSourceIdx = sIdx;
+      playSource(currentSources[currentSourceIdx]);
+      renderServerButtons();
+    };
+    serverList.appendChild(btn);
+  });
+}
+
+function playSource(currentSrc) {
+  if (isEmbedStream(currentSrc)) {
+    video.style.display = 'none';
+    video.pause();
+    if (embedEl) {
+      embedEl.style.display = 'block';
+      embedEl.src = currentSrc;
+    }
+    overlay.classList.add('hidden');
+    if (controlsEl) controlsEl.style.display = 'none';
+  } else {
+    if (embedEl) {
+      embedEl.style.display = 'none';
+      embedEl.src = '';
+    }
+    video.style.display = 'block';
+    if (controlsEl) controlsEl.style.display = 'flex';
+    video.src = currentSrc;
+    video.load();
+    overlay.classList.remove('hidden');
+  }
+}
+
 function showLanding() {
+  video.pause();
+  if (embedEl) {
+    embedEl.src = '';
+    embedEl.style.display = 'none';
+  }
   player.style.display = 'none';
   landing.style.display = 'block';
   document.body.style.background = '#fff';
@@ -144,9 +255,14 @@ function openDirect() {
 function load(i) {
   if (!VIDEO_LIST.length) return;
   idx = (i + VIDEO_LIST.length) % VIDEO_LIST.length;
+  currentSources = getAllSources(VIDEO_LIST[idx]);
+  currentSourceIdx = 0;
+
+  playSource(currentSources[0] || '');
+  renderServerButtons();
+
   const current = VIDEO_LIST[idx];
-  video.src = current.src;
-  updatePageTitle(current.title);
+  updatePageTitle(current.title || DEFAULT_TITLE);
   counter.textContent = (idx + 1) + ' / ' + VIDEO_LIST.length;
   fill.style.width = '0%';
   time.textContent = '00:00 / 00:00';
@@ -159,10 +275,10 @@ function toggle() {
   else { video.pause(); }
 }
 
-document.getElementById('btnContinue').onclick = () => { openDirect(); showPlayer(); load(idx); video.play().catch(()=>{}); };
-document.getElementById('playIcon').onclick = () => { openDirect(); showPlayer(); load(idx); video.play().catch(()=>{}); };
+document.getElementById('btnContinue').onclick = () => { openDirect(); showPlayer(); load(idx); if (!isEmbedStream(currentSources[currentSourceIdx])) video.play().catch(()=>{}); };
+document.getElementById('playIcon').onclick = () => { openDirect(); showPlayer(); load(idx); if (!isEmbedStream(currentSources[currentSourceIdx])) video.play().catch(()=>{}); };
 document.getElementById('btnBack').onclick = showLanding;
-document.getElementById('btnNext').onclick = () => { load(idx + 1); video.play().catch(() => {}); };
+document.getElementById('btnNext').onclick = () => { load(idx + 1); if (!isEmbedStream(currentSources[currentSourceIdx])) video.play().catch(() => {}); };
 overlay.onclick = () => { openDirect(); video.play().catch(() => {}); };
 video.onclick = () => { if (video.paused) openDirect(); toggle(); };
 playBtn.onclick = () => { if (video.paused) openDirect(); toggle(); };
@@ -178,7 +294,15 @@ video.onpause = () => {
 };
 video.onended = () => {
   load(idx + 1);
-  video.play().catch(() => {});
+  if (!isEmbedStream(currentSources[currentSourceIdx])) video.play().catch(() => {});
+};
+video.onerror = () => {
+  if (currentSources && currentSourceIdx < currentSources.length - 1) {
+    currentSourceIdx++;
+    playSource(currentSources[currentSourceIdx]);
+    renderServerButtons();
+    video.play().catch(() => {});
+  }
 };
 video.ontimeupdate = () => {
   fill.style.width = ((video.currentTime / video.duration) || 0) * 100 + '%';
