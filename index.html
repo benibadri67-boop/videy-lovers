@@ -190,11 +190,7 @@ function renderServerButtons() {
     const isActive = sIdx === currentSourceIdx;
     btn.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;transition:all 0.2s;' +
       (isActive ? 'background:#2563eb;color:#fff;border:1px solid #3b82f6;font-weight:700;' : 'background:#1e293b;color:#cbd5e1;border:1px solid #334155;');
-    const pName = getProviderName(srcUrl);
-    const label = sIdx === 0 
-      ? (pName ? `Server 1 (${pName} - Utama)` : 'Server 1 (Utama)')
-      : (pName ? `Server ${sIdx + 1} (${pName})` : `Server ${sIdx + 1} (Cadangan)`);
-    btn.textContent = label;
+    btn.textContent = 'Server ' + (sIdx + 1);
     btn.onclick = () => {
       if (currentSourceIdx === sIdx) return;
       currentSourceIdx = sIdx;
