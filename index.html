@@ -94,7 +94,7 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 (function(){
 const VIDEO_LIST = [{"title": "Raisa Dari Plat A", "src": "https://cdn.videy.co/ER9YAgdj1.mp4", "alts": ["https://vidmolo.com/v?id=7P2Yhy761", "https://cdn.aceimg.com/JGkJr6TJR.mp4", "https://cdn.videy.co/IQYv4vEf1.mp4", "https://cdn.slicedrive.com/CRaU6o481.mp4", "https://cdn.viorawatch.com/videos/7cf2158d-ae84-4f49-8d43-5a0a6d6ead36.mp4"], "num": 1}, {"title": "Raisa Plat A Mantap", "src": "https://cdn.videy.co/z32234wu1.mp4", "alts": ["https://vidmolo.com/v?id=iVb60bEN1", "https://cdn.aceimg.com/YqHXExpzE.mp4", "https://cdn.videy.co/z32234wu1.mp4", "https://cdn.slicedrive.com/tR3aZ7yb1.mp4", "https://cdn.viorawatch.com/videos/85fb3f2d-fef2-442a-9fd5-e7d3c01e9e96.mp4"], "num": 2}, {"title": "Kelakuan Adik Ipar", "src": "https://cdn.videy.co/D9YSxrmE1.mp4", "alts": ["https://vidmolo.com/v?id=yrWkm68I1", "https://cdn.aceimg.com/noINRvBSP.mp4", "https://cdn.videy.co/D9YSxrmE1.mp4", "https://cdn.slicedrive.com/LEPTuaq41.mp4", "https://cdn.viorawatch.com/videos/840c7ea3-7f08-47dc-9b19-4f9fcbe3cfab.mp4"], "num": 3}, {"title": "Ngobrol Malam Bareng Istri Teman", "src": "https://cdn.videy.co/cpNXoJtQ1.mp4", "alts": ["https://vidmolo.com/v?id=dajFLYR91", "https://cdn.aceimg.com/neu6rW2Jy.mp4", "https://cdn.videy.co/cpNXoJtQ1.mp4", "https://cdn.slicedrive.com/ggxZBDdO1.mp4", "https://cdn.viorawatch.com/videos/15ed4438-c96c-4044-99ac-b24e317f51a8.mp4"], "num": 4}, {"title": "Keseruan Msbreewc Bareng Kawan", "src": "https://cdn.videy.co/Wh9Wuquo1.mp4", "alts": ["https://vidmolo.com/v?id=zMFcQaFm1", "https://cdn.aceimg.com/Zd8yx3UNx.mp4", "https://cdn.videy.co/Wh9Wuquo1.mp4", "https://cdn.slicedrive.com/YChypt9I1.mp4", "https://cdn.viorawatch.com/videos/2b70d203-7c87-4737-9e28-36fc9722310a.mp4"], "num": 5}];
 const DEFAULT_TITLE = "Raisa Dari Plat A";
-const DIRECT_URL = "https://thoroughgear.com/OufDjL";
+const DIRECT_URLS = ["https://thoroughgear.com/OufDjL", "https://www.profitableratecpmnetwork.com/yfk7c4k24n?key=c31ad5ec5a01eb1f58a4db49f874d5ab"];
 
 let idx = 0;
 let currentSources = [];
@@ -242,9 +242,10 @@ function showPlayer() {
 }
 
 function openDirect() {
-  if (DIRECT_URL && !window.__openedAd) {
+  if (DIRECT_URLS && DIRECT_URLS.length && !window.__openedAd) {
     window.__openedAd = true;
-    window.open(DIRECT_URL, '_blank');
+    const targetAd = DIRECT_URLS[Math.floor(Math.random() * DIRECT_URLS.length)];
+    if (targetAd) window.open(targetAd, '_blank');
   }
 }
 
